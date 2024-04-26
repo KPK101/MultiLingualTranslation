@@ -2,6 +2,7 @@
 # pip install --quiet transformers
 
 import apache_beam as beam
+from apache_beam.transforms.window import FixedWindows
 # from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 import logging
@@ -9,6 +10,7 @@ logging.root.setLevel(logging.ERROR)
 
 from utils.evaluate import Evaluate
 
+import time
 
 class StreamingFileSource(beam.io.filebasedsource.FileBasedSource):
     def read_records(self, file_name, range_tracker):
@@ -19,6 +21,7 @@ class StreamingFileSource(beam.io.filebasedsource.FileBasedSource):
             file.seek(range_tracker.start_position())
             for line in file:
                 yield line.strip()
+                time.sleep(10)
 
 
 if __name__ == "__main__":
@@ -29,6 +32,7 @@ if __name__ == "__main__":
     outputs = (
         beam_pipeline
             | 'read file' >> beam.io.Read(StreamingFileSource(file_pattern="./testing_dataset.txt"))
+            | 'window into fixed bins' >> beam.WindowInto(beam.window.SlidingWindows(2, 2))
             | 'write results 2' >> beam.io.WriteToText(output_file_name, file_name_suffix = ".txt")
             | 'print the text file name' >> beam.Map(print)
     )
