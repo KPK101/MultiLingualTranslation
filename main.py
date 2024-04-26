@@ -10,15 +10,27 @@ logging.root.setLevel(logging.ERROR)
 from utils.evaluate import Evaluate
 
 
+class StreamingFileSource(beam.io.filebasedsource.FileBasedSource):
+    def read_records(self, file_name, range_tracker):
+        # Continuously read chunks of data from the file
+        while not range_tracker.try_claim(1):
+            yield None
+        with self.open_file(file_name) as file:
+            file.seek(range_tracker.start_position())
+            for line in file:
+                yield line.strip()
 
-beam_pipeline = beam.Pipeline()
 
-output_file_name = "output"
+if __name__ == "__main__":
+    beam_pipeline = beam.Pipeline()
 
-outputs = (
-    beam_pipeline
-    | 'write results 2' >> beam.io.WriteToText(output_file_name, file_name_suffix = ".txt")
-    | 'print the text file name' >> beam.Map(print)
-)
+    output_file_name = "output"
 
-beam_pipeline.run()
+    outputs = (
+        beam_pipeline
+            | 'read file' >> beam.io.Read(StreamingFileSource(file_pattern="./testing_dataset.txt"))
+            | 'write results 2' >> beam.io.WriteToText(output_file_name, file_name_suffix = ".txt")
+            | 'print the text file name' >> beam.Map(print)
+    )
+
+    beam_pipeline.run()

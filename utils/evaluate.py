@@ -5,7 +5,7 @@ from datetime import datetime
 def get_default_entry():
     now = datetime.now()
     return now.strftime("%a %d/%m/%Y %H:%M:%S %Z").upper()
-    
+
 
 class Evaluate():
 
@@ -17,10 +17,10 @@ class Evaluate():
         self.data = []
         self.temp = ""
         self.make_new_entry()
-        
+
 
     def make_new_entry(self, data=""):
-        if self.temp != "": 
+        if self.temp != "":
             self.data.append(self.temp)
 
         self.temp = f"{get_default_entry()} >> {data} >> "
