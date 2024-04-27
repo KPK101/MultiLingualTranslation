@@ -1,0 +1,21 @@
+What is the task being performed?
+- To translate input text into a target language
+
+
+What decides the quality of translation?
+- The amount of information in the chunk providing relevant information to the transformer model.
+
+How is information being input to the model?
+- A source generates text(sentences/phrases) and send them to a server.
+- The VM performing inference loads these sentences from the server and translates them
+- Implement a queue that takes input data
+
+
+What are the strategies that I can consider to process input information?
+- In the ideal case, input data is loaded continuously from the server and attached to the queue. Once enough data is in the window being considered, trigger according to the rule. Process evicted data and send translation to another server. Extract information and display in the desired location.
+- An initial thought is to consider how much time to wait before I process a chunk of data. What will the worst case latency I can tolerate for my model? 
+- Setting worst case latency as 10 seconds. So if I dont populate my window with enough text to trigger, I will process available text regardless of translation quality. A strategy to evaluate performance in this case is to store the triggered chunk and process it according to the rule in the backend and compare the translation in this case against the one obtained by triggering due to excess waiting. (This is optional)
+
+What are the chunking strategies that will ensure good performance?
+
+ 
