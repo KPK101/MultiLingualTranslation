@@ -11,6 +11,10 @@ logging.root.setLevel(logging.ERROR)
 from utils.evaluate import Evaluate
 
 import time
+import os
+
+curr_path = os.getcwd()
+os.chdir(curr_path)
 
 class StreamingFileSource(beam.io.filebasedsource.FileBasedSource):
     def read_records(self, file_name, range_tracker):
@@ -19,6 +23,8 @@ class StreamingFileSource(beam.io.filebasedsource.FileBasedSource):
             yield None
         with self.open_file(file_name) as file:
             file.seek(range_tracker.start_position())
+            lines = file.readlines()
+            file.close()
             for line in file:
                 yield line.strip()
                 time.sleep(10)
@@ -31,7 +37,7 @@ if __name__ == "__main__":
 
     outputs = (
         beam_pipeline
-            | 'read file' >> beam.io.Read(StreamingFileSource(file_pattern="./testing_dataset.txt"))
+            | 'read file' >> beam.io.Read(StreamingFileSource(file_pattern=os.path.join(curr_path, "./testing_dataset.txt")))
             | 'window into fixed bins' >> beam.WindowInto(beam.window.SlidingWindows(2, 2))
             | 'write results 2' >> beam.io.WriteToText(output_file_name, file_name_suffix = ".txt")
             | 'print the text file name' >> beam.Map(print)
