@@ -178,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', metavar='t', action='store', type=str, default="dataset.txt", required=False, help="dataset to run the inference")
     args = parser.parse_args()
     
-    with open(dataset, 'r') as file:
+    with open(args.dataset, 'r') as file:
         # Read the first line
         first_line = file.readline()
         print("First line of the file:")
