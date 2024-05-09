@@ -171,10 +171,10 @@ if __name__ == "__main__":
     # declare global variables
     global llm_forward, llm_backward
     with open('dataset.txt', 'r') as file:
-    # Read the first line
-    first_line = file.readline()
-    print("First line of the file:")
-    print(first_line.strip())
+        # Read the first line
+        first_line = file.readline()
+        print("First line of the file:")
+        print(first_line.strip())
     pdb.set_trace()
     # declare argument parser
     parser = argparse.ArgumentParser(description ='Set translation parameters')
