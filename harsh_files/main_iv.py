@@ -170,12 +170,6 @@ if __name__ == "__main__":
     
     # declare global variables
     global llm_forward, llm_backward
-    with open('dataset.txt', 'r') as file:
-        # Read the first line
-        first_line = file.readline()
-        print("First line of the file:")
-        print(first_line.strip())
-    pdb.set_trace()
     # declare argument parser
     parser = argparse.ArgumentParser(description ='Set translation parameters')
     parser.add_argument('--sourcelanguage', metavar='s', action='store', type=str, default="eng_Latn", required=False, help="source language for LLM")
@@ -183,6 +177,13 @@ if __name__ == "__main__":
     parser.add_argument('--modelname', metavar='m', action='store', type=str, default="facebook/nllb-200-distilled-1.3B", required=False, help="LLM model hugging face link")
     parser.add_argument('--dataset', metavar='t', action='store', type=str, default="dataset.txt", required=False, help="dataset to run the inference")
     args = parser.parse_args()
+    
+    with open('dataset', 'r') as file:
+        # Read the first line
+        first_line = file.readline()
+        print("First line of the file:")
+        print(first_line.strip())
+    pdb.set_trace()
     
     # delete the older output file if it exists
     output_file_path = os.path.join(curr_path, output_file)
