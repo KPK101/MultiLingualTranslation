@@ -95,7 +95,7 @@ def infer_forward(text):
     input_stream += text
     
     start = time.time()
-    output = llm_forward(text, max_length=1000)
+    output = llm_forward(text, max_length=5000)
     curr_time += time.time() - start
     
     translated_text = output[0]['translation_text']
@@ -105,11 +105,14 @@ def infer_forward(text):
 def infer_backward(text):
     global output_stream
     
-    output = llm_backward(text.split(evaluate.SEP)[1], max_length=1000)
+    output = llm_backward(text.split(evaluate.SEP)[1], max_length=5000)
     translated_text = output[0]['translation_text']
     output_stream += translated_text
     return text.split(evaluate.SEP)[0] + evaluate.SEP + translated_text
 
+
+def show_backward_translations(element):
+    print(element.split(evaluate.SEP)[1])
 
 def evaluate_all(chunk_s):
     global results, input_stream, output_stream, curr_time, time_taken
@@ -119,42 +122,55 @@ def evaluate_all(chunk_s):
     chunk_size.append(chunk_s)
     time_taken.append(curr_time)
     curr_time = 0.0
-    
-    
-def softmax_and_scale(x, scale=300.0):
-    exp_x = np.exp(x - np.max(x))  
-    s = exp_x * scale / exp_x.sum(axis=0)
-    print(s)
-    return s
-    
 
+def min_max_scaling(data):
+    min_val = min(data)
+    max_val = max(data)
+    scaled_data = [((x - min_val) / (max_val - min_val) + 2.0) * 10 for x in data] 
+    return scaled_data
+    
 def visualize(chunk, scores, times):
-    chunk = softmax_and_scale(chunk)
+    # chunk = min_max_scaling(chunk)
     
     fig, axs = plt.subplots(2, 2, figsize=(20, 20))
     
-    axs[0, 0].scatter(times, [t[0] for t in scores], s=chunk)
+    jaccards = [t[0] for t in scores]
+    axs[0, 0].scatter(times, jaccards)
+    for i, key in enumerate(chunk):
+        axs[0, 0].text(times[i], jaccards[i]*1.1, key, ha="right")
     axs[0, 0].set_title('Jaccard similarity')
     axs[0, 0].set_xlabel('Inference time')
     axs[0, 0].set_ylabel('Score')
+    axs[0, 0].set_ylim(0, 1)
     axs[0, 0].grid(True)
-
-    axs[0, 1].scatter(times, [t[1] for t in scores], s=chunk)
+    
+    cosines = [t[1] for t in scores]
+    axs[0, 1].scatter(times, cosines)
+    for i, key in enumerate(chunk):
+        axs[0, 1].text(times[i], cosines[i]*1.1, key, ha="right")
     axs[0, 1].set_title('Cosine similarity')
     axs[0, 1].set_xlabel('Inference time')
     axs[0, 1].set_ylabel('Score')
+    axs[0, 1].set_ylim(0, 1)
     axs[0, 1].grid(True)
-
-    axs[1, 0].scatter(times, [t[2] for t in scores], s=chunk)
+    
+    eucledians = [t[2] for t in scores]
+    axs[1, 0].scatter(times, eucledians)
+    for i, key in enumerate(chunk):
+        axs[1, 0].text(times[i], eucledians[i]*1.1, key, ha="right")
     axs[1, 0].set_title('Eucledian distance')
     axs[1, 0].set_xlabel('Inference time')
     axs[1, 0].set_ylabel('Score')
     axs[1, 0].grid(True)
-
-    axs[1, 1].scatter(times, [t[3] for t in scores], s=chunk)
+    
+    bleus = [t[3] for t in scores]
+    axs[1, 1].scatter(times, bleus)
+    for i, key in enumerate(chunk):
+        axs[1, 1].text(times[i], bleus[i]*1.1, key, ha="right")
     axs[1, 1].set_title('BLEU score')
     axs[1, 1].set_xlabel('Inference time')
     axs[1, 1].set_ylabel('Score')
+    axs[1, 1].set_ylim(0, 1)
     axs[1, 1].grid(True)
     
     plt.tight_layout()
@@ -204,8 +220,8 @@ if __name__ == "__main__":
         
     
     # run the pipeline
-    for chunk in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 25, 50, 75, 100]:
-        print(time.time(), "currently inferencing on chunk size:", chunk)
+    for chunk in [1, 2, 3, 4, 5]:
+        print(int(time.time() - start_time), "currently inferencing on chunk size:", chunk)
         with beam.Pipeline() as beam_pipeline:
             outputs = (
                 beam_pipeline
@@ -214,7 +230,7 @@ if __name__ == "__main__":
                 | 'chunk data' >> beam.ParDo(ChunkIntoNSentences(chunk))
                 | 'make forward translation' >> beam.Map(infer_forward) 
                 | 'make backward translation' >> beam.Map(infer_backward) 
-                # | 'print' >> beam.Map(print)
+                | 'print' >> beam.Map(show_backward_translations)
             )
 
         evaluate_all(chunk)
