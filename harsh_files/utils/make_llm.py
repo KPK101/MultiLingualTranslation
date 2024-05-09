@@ -5,7 +5,7 @@
 
 
 import os
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 
 def make_model(model_name):
@@ -14,7 +14,7 @@ def make_model(model_name):
     return model, tokenizer
 
 
-def save_model(model, token, folder):
+def save_model(model, tokenizer, folder):
     model.save_pretrained(os.path.join(folder, "model"))
     tokenizer.save_pretrained(os.path.join(folder, "tokenizer"))
 
@@ -23,6 +23,10 @@ def load_model(folder):
     model = AutoModelForSeq2SeqLM.from_pretrained(os.path.join(folder, "model"))
     tokenizer = AutoTokenizer.from_pretrained(os.path.join(folder, "tokenizer"))
     return model, tokenizer
+
+def create_llm(model, tokenizer, src_lang, tgt_lang):
+    model = pipeline('translation', model=model, tokenizer=tokenizer, src_lang=src_lang, tgt_lang=tgt_lang)
+    return model
 
 
 if __name__ == "__main__":

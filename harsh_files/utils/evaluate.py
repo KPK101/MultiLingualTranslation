@@ -1,89 +1,75 @@
 
 import numpy as np
+import nltk
 from datetime import datetime
+from nltk.translate.bleu_score import sentence_bleu
+from nltk.tokenize import word_tokenize
 
-def get_default_entry():
-    now = datetime.now()
-    return now.strftime("%a %d/%m/%Y %H:%M:%S %Z").upper()
+nltk.download('punkt')
 
-
-class Evaluate():
-
-    def __init__(self, save_path="./evaluation_metrics.txt", verbose=False, decimals=5):
-        self.path = save_path
-        self.verbose = verbose
-        self.decimal = decimals
-
-        self.data = []
-        self.temp = ""
-        self.make_new_entry()
+SEP = "</SEP>"
+DECIMAL = 6
 
 
-    def make_new_entry(self, data=""):
-        if self.temp != "":
-            self.data.append(self.temp)
+def jaccard_similarity(text):
+    text1, text2 = text.split(SEP)[0], text.split(SEP)[1]
+    
+    text1 = np.array(text1.lower().split(" "))
+    text2 = np.array(text2.lower().split(" "))
 
-        self.temp = f"{get_default_entry()} >> {data} >> "
+    intersection = len(np.intersect1d(text1, text2))
+    union = len(np.union1d(text1, text2))
+
+    j_similarity = round(float(intersection/union), DECIMAL)
+
+    return j_similarity
 
 
 
-    def jaccard_similarity(self, text1, text2):
-        text1 = np.array(text1.lower().split(" "))
-        text2 = np.array(text2.lower().split(" "))
+def cosine_similarity(text):
+    text1, text2 = text.split(SEP)[0], text.split(SEP)[1]
+    
+    text1 = text1.lower().split(" ")
+    text2 = text2.lower().split(" ")
 
-        intersection = len(np.intersect1d(text1, text2))
-        union = len(np.union1d(text1, text2))
+    unique_words = set(text1 + text2)
 
-        j_similarity = round(float(intersection/union), self.decimal)
-        self.temp = self.temp + str(j_similarity)
-        if self.verbose : print(self.temp)
+    vector1 = np.array([text1.count(word) for word in unique_words])
+    vector2 = np.array([text2.count(word) for word in unique_words])
 
-        return j_similarity
+    dot_product = np.dot(vector1, vector2)
+    magnitude1 = np.sqrt(np.sum(vector1 ** 2))
+    magnitude2 = np.sqrt(np.sum(vector2 ** 2))
 
+    cosine_sim = round(float(dot_product / (magnitude1 * magnitude2)), DECIMAL)
 
-
-    def cosine_similarity(self, text1, text2):
-        text1 = text1.lower().split(" ")
-        text2 = text2.lower().split(" ")
-
-        unique_words = set(text1 + text2)
-
-        vector1 = np.array([text1.count(word) for word in unique_words])
-        vector2 = np.array([text2.count(word) for word in unique_words])
-
-        dot_product = np.dot(vector1, vector2)
-        magnitude1 = np.sqrt(np.sum(vector1 ** 2))
-        magnitude2 = np.sqrt(np.sum(vector2 ** 2))
-
-        cosine_sim = round(float(dot_product / (magnitude1 * magnitude2)), self.decimal)
-        self.temp = self.temp + str(cosine_sim)
-        if self.verbose : print(self.temp)
-
-        return cosine_sim
+    return cosine_sim
 
 
 
-    def eucledian_distance(self, text1, text2):
-        text1 = text1.lower().split(" ")
-        text2 = text2.lower().split(" ")
+def eucledian_distance(text):
+    text1, text2 = text.split(SEP)[0], text.split(SEP)[1]
+    
+    text1 = text1.lower().split(" ")
+    text2 = text2.lower().split(" ")
 
-        unique_words = set(text1 + text2)
+    unique_words = set(text1 + text2)
 
-        vector1 = np.array([text1.count(word) for word in unique_words])
-        vector2 = np.array([text2.count(word) for word in unique_words])
+    vector1 = np.array([text1.count(word) for word in unique_words])
+    vector2 = np.array([text2.count(word) for word in unique_words])
 
-        eucledian_dist = round(float(np.sqrt(np.sum((vector1 - vector2) ** 2))), self.decimal)
-        self.temp = self.temp + str(eucledian_dist)
-        if self.verbose : print(self.temp)
+    eucledian_dist = round(float(np.sqrt(np.sum((vector1 - vector2) ** 2))), DECIMAL)
 
-        return eucledian_dist
+    return eucledian_dist
 
 
 
-    def save_data(self):
-        with open(self.path, "w") as file:
-            for line in self.data:
-                file.write(line + '\n')
-
-            file.close()
-
+def bleu_score(text):
+    text1, text2 = text.split(SEP)[0], text.split(SEP)[1]
+    
+    vector1 = word_tokenize(text1.lower())
+    vector2 = word_tokenize(text2.lower())
+    
+    bleu_score = round(sentence_bleu([vector1], vector2), DECIMAL)
+    
+    return bleu_score
