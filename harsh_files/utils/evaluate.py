@@ -5,7 +5,7 @@ from datetime import datetime
 from nltk.translate.bleu_score import sentence_bleu
 from nltk.tokenize import word_tokenize
 
-nltk.download('punkt')
+# nltk.download('punkt')
 
 SEP = "</SEP>"
 DECIMAL = 6
@@ -58,7 +58,7 @@ def eucledian_distance(text):
     vector1 = np.array([text1.count(word) for word in unique_words])
     vector2 = np.array([text2.count(word) for word in unique_words])
 
-    eucledian_dist = round(float(np.sqrt(np.sum((vector1 - vector2) ** 2))), DECIMAL)
+    eucledian_dist = round(float(np.linalg.norm(vector1 - vector2)), DECIMAL)
 
     return eucledian_dist
 

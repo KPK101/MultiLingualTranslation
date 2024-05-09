@@ -16,6 +16,8 @@ import json
 import time
 import logging
 import argparse
+import numpy as np
+import matplotlib.pyplot as plt
 logging.root.setLevel(logging.ERROR)
 
 # import custom libraries
@@ -33,8 +35,9 @@ model_dir = "_model"
 
 output_file = "./output.txt"
 
-results = [] 
+results, chunk_size, time_taken = [], [], []
 
+curr_time, input_stream, output_stream = 0.0, "", "" 
 
 """
 Add code to clean input data
@@ -88,20 +91,74 @@ class ChunkIntoNSentences(beam.DoFn):
             
 
 def infer_forward(text):
+    global input_stream, curr_time
+    input_stream += text
+    
+    start = time.time()
     output = llm_forward(text, max_length=1000)
+    curr_time += time.time() - start
+    
     translated_text = output[0]['translation_text']
     return text + evaluate.SEP + translated_text
 
 
 def infer_backward(text):
+    global output_stream
+    
     output = llm_backward(text.split(evaluate.SEP)[1], max_length=1000)
     translated_text = output[0]['translation_text']
+    output_stream += translated_text
     return text.split(evaluate.SEP)[0] + evaluate.SEP + translated_text
 
 
-def evaluate_all(text):
-    global results
-    results.append((evaluate.jaccard_similarity(text), evaluate.cosine_similarity(text), evaluate.eucledian_distance(text), evaluate.bleu_score(text)))
+def evaluate_all(chunk_s):
+    global results, input_stream, output_stream, curr_time, time_taken
+    element = input_stream + evaluate.SEP + output_stream
+    
+    results.append((evaluate.jaccard_similarity(element), evaluate.cosine_similarity(element), evaluate.eucledian_distance(element), evaluate.bleu_score(element)))
+    chunk_size.append(chunk_s)
+    time_taken.append(curr_time)
+    curr_time = 0.0
+    
+    
+def softmax_and_scale(x, scale=300.0):
+    exp_x = np.exp(x - np.max(x))  
+    s = exp_x * scale / exp_x.sum(axis=0)
+    print(s)
+    return s
+    
+
+def visualize(chunk, scores, times):
+    chunk = softmax_and_scale(chunk)
+    
+    fig, axs = plt.subplots(2, 2, figsize=(20, 20))
+    
+    axs[0, 0].scatter(times, [t[0] for t in scores], s=chunk)
+    axs[0, 0].set_title('Jaccard similarity')
+    axs[0, 0].set_xlabel('Inference time')
+    axs[0, 0].set_ylabel('Score')
+    axs[0, 0].grid(True)
+
+    axs[0, 1].scatter(times, [t[1] for t in scores], s=chunk)
+    axs[0, 1].set_title('Cosine similarity')
+    axs[0, 1].set_xlabel('Inference time')
+    axs[0, 1].set_ylabel('Score')
+    axs[0, 1].grid(True)
+
+    axs[1, 0].scatter(times, [t[2] for t in scores], s=chunk)
+    axs[1, 0].set_title('Eucledian distance')
+    axs[1, 0].set_xlabel('Inference time')
+    axs[1, 0].set_ylabel('Score')
+    axs[1, 0].grid(True)
+
+    axs[1, 1].scatter(times, [t[3] for t in scores], s=chunk)
+    axs[1, 1].set_title('BLEU score')
+    axs[1, 1].set_xlabel('Inference time')
+    axs[1, 1].set_ylabel('Score')
+    axs[1, 1].grid(True)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(curr_path, "scores.png"))
 
 #####################################################################################
 # ---------------------------- APACHE BEAM FUNCS ENDS ----------------------------- #
@@ -120,6 +177,7 @@ if __name__ == "__main__":
     parser.add_argument('--sourcelanguage', metavar='s', action='store', type=str, default="eng_Latn", required=False, help="source language for LLM")
     parser.add_argument('--destlanguage', metavar='d', action='store', type=str, default="fra_Latn", required=False, help="translation language for LLM")
     parser.add_argument('--modelname', metavar='m', action='store', type=str, default="facebook/nllb-200-distilled-1.3B", required=False, help="LLM model hugging face link")
+    parser.add_argument('--dataset', metavar='t', action='store', type=str, default="dataset.txt", required=False, help="dataset to run the inference")
     args = parser.parse_args()
     
     # delete the older output file if it exists
@@ -146,34 +204,21 @@ if __name__ == "__main__":
         
     
     # run the pipeline
-    with beam.Pipeline() as beam_pipeline:
-        outputs = (
-            beam_pipeline
-            | 'read from file' >> beam.io.ReadFromText('./dataset.txt')
-            | 'split data' >> beam.ParDo(SplitIntoSentences())
-            | 'chunk data' >> beam.ParDo(ChunkIntoNSentences(2))
-            | 'make forward translation' >> beam.Map(infer_forward) 
-            | 'make backward translation' >> beam.Map(infer_backward) 
-            | 'calculate performance' >> beam.Map(evaluate_all)
-            | 'print' >> beam.Map(print)
-        )
+    for chunk in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 25, 50, 75, 100]:
+        print(time.time(), "currently inferencing on chunk size:", chunk)
+        with beam.Pipeline() as beam_pipeline:
+            outputs = (
+                beam_pipeline
+                | 'read from file' >> beam.io.ReadFromText(os.path.join(curr_path, args.dataset))
+                | 'split data' >> beam.ParDo(SplitIntoSentences())
+                | 'chunk data' >> beam.ParDo(ChunkIntoNSentences(chunk))
+                | 'make forward translation' >> beam.Map(infer_forward) 
+                | 'make backward translation' >> beam.Map(infer_backward) 
+                # | 'print' >> beam.Map(print)
+            )
+
+        evaluate_all(chunk)
     
     print(results)
+    visualize(chunk_size, results, time_taken)
 
-# | 'read file' >> beam.io.Read(StreamingFileSource(file_pattern=os.path.join(curr_path, "./testing_dataset.txt")))
-# | 'window into fixed bins' >> beam.WindowInto(beam.window.SlidingWindows(2, 2))
-# | 'write results 2' >> beam.io.WriteToText(output_file_name, file_name_suffix = ".txt")
-# | 'print the text file name' >> beam.Map(print)
-# | 'Sliding Windows' >> beam.WindowInto(beam.window.FixedWindows(100))
-# | 'Extract Key' >> beam.ParDo(lambda element: str(json.loads(element.decode('utf-8'))["timestamp"]))
-# | 'Create Tuples' >> beam.ParDo(create_tuples)
-# | 'Save to File' >> beam.Map(save_to_file)
-
-
-# options = PipelineOptions(
-#     streaming=True,
-#     project=PROJECT_ID,
-#     region=REGION,
-#     # service_account_email="lssp-pubsub-service-account@lssp-project.iam.gserviceaccount.com",
-#     # service_account_key_file='./lssp-project.json'
-# )
