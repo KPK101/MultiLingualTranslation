@@ -1,5 +1,4 @@
 # Multi-Lingual Translation
-# ELEN6889 SPRING 2024 Final Project
 
 ## A streaming pipeline for real-time multilingual translation of text with LLMs.
 
